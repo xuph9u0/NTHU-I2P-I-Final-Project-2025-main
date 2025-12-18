@@ -11,6 +11,7 @@ from .setting_overlay import SettingOverlay
 from src.scenes.battle_scene import BattleScene
 from src.scenes.catch_pokemon_scene import CatchPokemonScene
 from src.entities.shop_npc import ShopNPC
+from src.scenes.shop_overlay import ShopOverlay
 
 
 class GameScene(Scene):
@@ -64,6 +65,11 @@ class GameScene(Scene):
         # ---------------------------
         self.backpack_overlay = BackpackOverlay(self)
         self.setting_overlay = SettingOverlay(self)
+        self.shop_overlay = ShopOverlay(self)
+
+
+        # 玩家與 NPC 互動範圍
+        self.interaction_range = 300
 
         # ---------------------------
         # Buttons
@@ -111,9 +117,16 @@ class GameScene(Scene):
         self.enemy_warnings = []
         self.closest_enemy = None
 
+        # [新增] 商店提示清單
+        self.shop_warnings = [] 
+
         # Exclamation mark
         font = pg.font.SysFont(None, 36)
         self.warning_img = font.render("!", True, (255, 0, 0))
+       
+        # [新增] SHOP 文字圖片 
+        font= pg.font.SysFont(None, 20)
+        self.shop_label_img = font.render("SHOP", True, (100, 100, 255))
 
     # ==============================
     # Overlay control
@@ -129,6 +142,8 @@ class GameScene(Scene):
     def close_overlay(self):
         if self.overlay_type == "backpack" and self.backpack_overlay:
             self.backpack_overlay.visible = False
+        elif self.overlay_type == "shop" and self.shop_overlay:  
+            self.shop_overlay.visible = False
         self.overlay_type = None
 
     # ==============================
@@ -164,7 +179,9 @@ class GameScene(Scene):
             # 與 ShopNPC 互動
             for npc in self.shop_npcs:
                 if player_rect.colliderect(npc.rect):
-                    npc.open_shop(self.game_manager.bag)
+                    # 設定狀態為 shop，並讓 overlay 可見
+                    self.overlay_type = "shop"
+                    self.shop_overlay.visible = True
                     return
 
 
@@ -188,14 +205,22 @@ class GameScene(Scene):
         else:
             if self.overlay_type == "backpack":
                 self.backpack_overlay.update(dt)
-            if self.overlay_type == "setting":
+            elif self.overlay_type == "setting":
                 self.setting_overlay.update(dt)
-            self.back_button.update(dt)
+            elif self.overlay_type == "shop":    # [新增] 商店更新
+                self.shop_overlay.update(dt)
+            
+            # 如果你的 ShopOverlay 自帶關閉按鈕，這裡其實不需要通用 back_button
+            # 但為了保持一致性，先留著也行，或者在 shop 時隱藏它
+            if self.overlay_type != "shop": 
+                self.back_button.update(dt)
+            
 
         # ---------------------------
         # NPC warning & enemy logic
         # ---------------------------
         self.enemy_warnings = []
+        self.shop_warnings = []  #  每一幀先清空商店提示
         self.closest_enemy = None
         min_dist_sq = float("inf")
 
@@ -220,6 +245,9 @@ class GameScene(Scene):
                         enemy_h = enemy.image.get_height()
                     except Exception:
                         pass
+
+            
+
                 enemy_rect = pg.Rect(enemy.position.x, enemy.position.y, enemy_w, enemy_h)
                 dx = player_rect.centerx - enemy_rect.centerx
                 dy = player_rect.centery - enemy_rect.centery
@@ -230,6 +258,17 @@ class GameScene(Scene):
                     if dist_sq < min_dist_sq:
                         min_dist_sq = dist_sq
                         self.closest_enemy = enemy
+# --- [新增] 商店 NPC 偵測邏輯 ---
+            for npc in self.shop_npcs:
+                # 計算玩家與商店 NPC 的距離
+                dx = player_rect.centerx - npc.rect.centerx
+                dy = player_rect.centery - npc.rect.centery
+                dist_sq = dx * dx + dy * dy
+                
+                # 設定觸發距離 (例如 120 像素，跟敵人一樣)
+                warning_radius = 120
+                if dist_sq <= warning_radius ** 2:
+                    self.shop_warnings.append(npc.rect)
 
         # ---------------------------
         # Game logic
@@ -287,12 +326,45 @@ class GameScene(Scene):
         for rect in self.enemy_warnings:
             screen.blit(self.warning_img, (rect.centerx - 10 - camera.x, rect.y - 40 - camera.y))
 
+        # [新增] Shop warnings
+        for rect in self.shop_warnings:
+            # 將文字畫在 NPC 上方 (rect.y - 40)，並扣除 camera 位移
+            # centerx - 30 是為了讓文字 "SHOP" 稍微置中 (依據文字寬度調整)
+            screen.blit(self.shop_label_img, (rect.centerx - 20 - camera.x, rect.y - 10 - camera.y))
+
         # Overlay buttons
         if self.overlay_type is None:
             screen.blit(self.setting_button.img_button.image, self.setting_button.hitbox)
             screen.blit(self.backpack_button.img_button.image, self.backpack_button.hitbox)
             return
+        # -------------------------------------------------
+        # 繪製 Overlay
+        # -------------------------------------------------
+        
+        # 情況 A: 如果是 "shop" 或 "backpack"，它們自己會畫背景，直接呼叫 draw
+        if self.overlay_type == "shop":
+            self.shop_overlay.draw(screen)
+            return # 畫完直接 return，不畫下面的通用背景
 
+        if self.overlay_type == "backpack":
+            self.backpack_overlay.draw(screen)
+            return # 同上
+
+        # 情況 B: 其他還沒重構的 Overlay (如 setting)，使用通用的白色面板
+        # Overlay background
+        overlay = pg.Surface(screen.get_size(), pg.SRCALPHA)
+        overlay.fill((0, 0, 0, 180))
+        screen.blit(overlay, (0, 0))
+
+        panel_rect = pg.Rect(screen.get_width() // 2 - 300, screen.get_height() // 2 - 250, 600, 500)
+        pg.draw.rect(screen, (240, 240, 240), panel_rect, border_radius=12)
+
+        # Draw overlay pages
+        if self.overlay_type == "setting":
+            self.setting_overlay.draw(screen)
+        
+        # 通用返回按鈕 (Shop 和 Backpack 通常有自己的 X 按鈕，所以這裡只給 Setting 用)
+        screen.blit(self.back_button.img_button.image, self.back_button.hitbox)
         # Overlay background
         overlay = pg.Surface(screen.get_size(), pg.SRCALPHA)
         overlay.fill((0, 0, 0, 180))
