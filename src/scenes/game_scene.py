@@ -12,6 +12,7 @@ from src.scenes.battle_scene import BattleScene
 from src.scenes.catch_pokemon_scene import CatchPokemonScene
 from src.entities.shop_npc import ShopNPC
 from src.scenes.shop_overlay import ShopOverlay
+from src.scenes.minimap import Minimap
 
 
 class GameScene(Scene):
@@ -66,6 +67,7 @@ class GameScene(Scene):
         self.backpack_overlay = BackpackOverlay(self)
         self.setting_overlay = SettingOverlay(self)
         self.shop_overlay = ShopOverlay(self)
+        self.minimap = Minimap(self)
 
 
         # 玩家與 NPC 互動範圍
@@ -331,6 +333,16 @@ class GameScene(Scene):
             # 將文字畫在 NPC 上方 (rect.y - 40)，並扣除 camera 位移
             # centerx - 30 是為了讓文字 "SHOP" 稍微置中 (依據文字寬度調整)
             screen.blit(self.shop_label_img, (rect.centerx - 20 - camera.x, rect.y - 10 - camera.y))
+        for rect in self.shop_warnings:
+             screen.blit(self.shop_label_img, (rect.centerx - 20 - camera.x, rect.y - 10 - camera.y))
+
+        # ==========================
+        # [新增] 繪製小地圖 (Minimap)
+        # 只有在沒有打開任何 Overlay 時才顯示，避免遮擋背包
+        # ==========================
+        if self.overlay_type is None:
+            self.minimap.draw(screen)
+
 
         # Overlay buttons
         if self.overlay_type is None:
