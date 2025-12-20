@@ -145,13 +145,23 @@
     ],
     "items": [
       {
-        "name": "Potion",
+        "name": "Heal",
         "count": 5,
         "sprite_path": "ingame_ui/potion.png"
       },
       {
+        "name": "Strength",
+        "count": 6,
+        "sprite_path": "ingame_ui/potion.png"
+      },
+      {
+        "name": "Defense",
+        "count": 8,
+        "sprite_path": "ingame_ui/potion.png"
+      },
+      {
         "name": "Coins",
-        "count": 3,
+        "count": 20,
         "sprite_path": "ingame_ui/coin.png"
       },
       {

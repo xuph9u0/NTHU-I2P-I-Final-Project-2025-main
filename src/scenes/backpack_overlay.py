@@ -119,14 +119,15 @@ class BackpackOverlay:
         grid_x = self.x + 320
         grid_y = self.y + 100
         items_per_row = 3
+        spacing_x = spacing        # 水平間距 (維持原本設定)
+        spacing_y = spacing + 40   # 垂直間距 (原本的間距 + 額外空間)
 
         for idx, item in enumerate(self.items):
             row = idx // items_per_row
             col = idx % items_per_row
-            x = grid_x + col * (cell_size + spacing)
-            y = grid_y + row * (cell_size + spacing)
-
-            # 載入圖片
+            x = grid_x + col * (cell_size + spacing_x)
+            y = grid_y + row * (cell_size + spacing_y)
+            
             sprite_path = item.get("sprite_path", "")
             item_img = Sprite(sprite_path, (cell_size, cell_size))
             # 修正：使用 x, y 放置圖片

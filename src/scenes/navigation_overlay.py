@@ -150,7 +150,7 @@ class NavigationOverlay(Scene):
             
         elif target_name == "GYM":
             # [請修改] Gym 的座標 (網格座標 x, y)
-            target_tile = (int(current_map.spawn.x // TS)+7, int(current_map.spawn.y // TS)-7)
+            target_tile = (int(current_map.spawn.x // TS)+9, int(current_map.spawn.y // TS)-6)
 
         print(f"Navigating to {target_name}: {target_tile}")
 
