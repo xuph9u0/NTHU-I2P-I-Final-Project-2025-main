@@ -1,5 +1,6 @@
 import pygame as pg
 import json
+import random
 from src.core.services import scene_manager, input_manager
 from src.utils import load_img
 from src.scenes.scene import Scene
@@ -41,6 +42,12 @@ class Monster:
         self.hp = data["hp"]
         self.max_hp = data["max_hp"]
         self.level = data["level"]
+        # [新增 2] 隨機屬性邏輯
+        # 如果 json 資料裡原本就有 element 就用原本的，沒有的話就隨機選一個
+        if "element" in data:
+            self.element = data["element"]
+        else:
+            self.element = random.choice(["Water", "Fire", "Grass"])
         self.sprite = load_img(data["sprite_path"])
         self.sprite = pg.transform.scale(self.sprite, (100, 100))
 
@@ -81,6 +88,24 @@ class CatchPokemonScene(Scene):
     # -----------------------
     # 生命週期
     # -----------------------
+
+    # [新增 3] 屬性相剋判斷函式
+    def get_element_multiplier(self, attacker_elem, defender_elem):
+        # 預設倍率 1.0
+        multiplier = 1.0
+        
+        # 水剋火
+        if attacker_elem == "Water" and defender_elem == "Fire":
+            multiplier = 1.5
+        # 火剋草
+        elif attacker_elem == "Fire" and defender_elem == "Grass":
+            multiplier = 1.5
+        # 草剋水
+        elif attacker_elem == "Grass" and defender_elem == "Water":
+            multiplier = 1.5
+            
+        return multiplier
+
     def enter(self):
         print("Entering CatchPokemonScene")
 
@@ -90,18 +115,37 @@ class CatchPokemonScene(Scene):
     # -----------------------
     # 按鈕行為
     # -----------------------
+    # -----------------------
+    # 按鈕行為
+    # -----------------------
     def fight_action(self):
-        self.enemy_monster.hp -= 1
+        # 1. 計算屬性倍率
+        multiplier = self.get_element_multiplier(self.player_monster.element, self.enemy_monster.element)
+        
+        # 2. 計算傷害 (基礎傷害 10 * 倍率)
+        base_damage = 5 
+        final_damage = int(base_damage * multiplier)
+        
+        self.enemy_monster.hp -= final_damage
+        
+        # 印出戰鬥訊息 (方便除錯)
+        print(f"我方 {self.player_monster.element} 攻擊 敵方 {self.enemy_monster.element}")
+        if multiplier > 1.0:
+            print(f"效果絕佳！造成 {final_damage} 點傷害 (2倍)")
+        else:
+            print(f"造成 {final_damage} 點傷害")
+
         if self.enemy_monster.hp < 0:
             self.enemy_monster.hp = 0
 
-        # 敵人死亡 → 記錄要加入背包的怪物
+        # 3. 敵人死亡 → 記錄要加入背包的怪物 (記得把屬性也存進去)
         if self.enemy_monster.hp == 0 and self.caught_monster is None:
             self.caught_monster = {
                 "name": self.enemy_monster.name,
                 "hp": self.enemy_monster.max_hp,
                 "max_hp": self.enemy_monster.max_hp,
                 "level": self.enemy_monster.level,
+                "element": self.enemy_monster.element, # [重要] 儲存屬性
                 "sprite_path": self.game_data["bag"]["monsters"][1]["sprite_path"]
             }
 
@@ -160,6 +204,13 @@ class CatchPokemonScene(Scene):
         # 名字
         name_text = self.font.render(monster.name, True, (0,0,0))
         screen.blit(name_text, (x, y))
+
+        # [新增 4] 繪製屬性文字 (用不同顏色區分)
+        color_map = {"Water": (0, 0, 255), "Fire": (255, 0, 0), "Grass": (0, 150, 0)}
+        elem_color = color_map.get(monster.element, (0, 0, 0))
+        
+        elem_text = self.font.render(monster.element, True, elem_color)
+        screen.blit(elem_text, (x + 80, y)) # 畫在名字右邊
 
         # 等級和 HP
         lvl_text = self.font.render(f"Lv {monster.level}", True, (0,0,0))

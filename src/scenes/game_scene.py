@@ -48,16 +48,7 @@ class GameScene(Scene):
         # Bushes for catching Pokemon
         # ---------------------------
         self.bushes = [
-            pg.Rect(player_x - 7 * TS, player_y, TS, TS),
-            pg.Rect(player_x + 11 * TS, player_y, TS, TS),
-            pg.Rect(player_x + 7 * TS, player_y + 4 * TS, TS, TS),
-            pg.Rect(player_x + 14 * TS, player_y, TS, TS),
-            pg.Rect(player_x + 26 * TS, player_y - 1 * TS, TS, TS),
-            pg.Rect(player_x + 28 * TS, player_y + 3 * TS, TS, TS),
-            pg.Rect(player_x + 33 * TS, player_y + 1 * TS, TS, TS),
-            pg.Rect(player_x + 35 * TS, player_y + 3 * TS, TS, TS),
-            pg.Rect(player_x + 31 * TS, player_y + 6 * TS, TS, TS),
-            pg.Rect(player_x + 7 * TS, player_y + 7 * TS, TS, TS)
+            pg.Rect(player_x - 8 * TS, player_y + 1* TS, TS, TS)
         ]
 
         # ---------------------------
@@ -203,7 +194,7 @@ class GameScene(Scene):
                 self.game_manager.player.position.y,
                 getattr(self.game_manager.player, "size", GameSettings.TILE_SIZE),
                 getattr(self.game_manager.player, "size", GameSettings.TILE_SIZE)
-            )
+            )       
 
             # ShopNPC
             for npc in self.shop_npcs:
