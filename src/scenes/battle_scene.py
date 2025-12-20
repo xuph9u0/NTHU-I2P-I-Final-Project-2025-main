@@ -178,69 +178,85 @@ class BattleScene:
     
     def enter(self):
         print("Entering BattleScene")
-        self.game_manager = GameManager.load("saves/game0.json")
-
-        # 1. 初始化背包介面
-        self.backpack_overlay = BackpackOverlay(self)
         
+        # 建立空的 GameManager 防止報錯
+        if not hasattr(self, "game_manager") or self.game_manager is None:
+            class DummyGM: pass
+            self.game_manager = DummyGM()
+
         self.player_monster = None
         self.enemy_monster = None
 
-        # 2. 嘗試讀取存檔
-        if self.game_manager:
-            try:
-                # 嘗試取得列表，不管它叫 monsters 還是 pokemon
-                bag = self.game_manager.bag
-                monster_list = []
+        # ----------------------------------------------------
+        # ★ 暴力讀檔法
+        # ----------------------------------------------------
+        try:
+            print("【系統】嘗試直接讀取 saves/game0.json ...")
+            
+            with open("saves/game0.json", "r", encoding="utf-8") as f:
+                raw_data = json.load(f)
                 
-                if hasattr(bag, "monsters"):
-                    monster_list = bag.monsters
-                elif hasattr(bag, "pokemon"):
-                    monster_list = bag.pokemon
-                elif hasattr(bag, "data"):
-                    monster_list = bag.data
+            monster_list = raw_data["bag"]["monsters"]
+            item_list = raw_data["bag"]["items"]
 
-                # 確保有足夠的怪物
-                if len(monster_list) > 5:
-                    self.player_monster = Monster(monster_list[5])
-                    self.enemy_monster = Monster(monster_list[1])
-                else:
-                    print("【警告】存檔內的怪物數量不足，將使用預設怪物")
+            print(f"【系統】讀取成功 -> 怪物: {len(monster_list)}隻, 道具: {len(item_list)}種")
+            
+            if len(monster_list) > 5:
+                p_data = monster_list[5]
+                e_data = monster_list[1]
+                self.player_monster = Monster(p_data)
+                self.enemy_monster = Monster(e_data)
+            else:
+                print("【錯誤】JSON 裡的怪物不夠多！")
 
-            except Exception as e:
-                print(f"【讀取失敗】無法從存檔載入怪物: {e}")
+            # ====================================================
+            # [修改這裡] 升級版 QuickBag，補上缺少的變數
+            # ====================================================
+            class QuickBag:
+                def __init__(self, m_list, i_list):
+                    # 公開變數
+                    self.monsters = m_list
+                    self.items = i_list
+                    
+                    # ★ 關鍵修復：補上 BackpackOverlay 想要讀的內部變數
+                    self._monsters_data = m_list  # 這行解決 AttributeError
+                    self._items_data = i_list     # 順便補上道具的，預防下一個報錯
+                    
+                    # 舊稱呼相容
+                    self.pokemon = m_list 
+                    self.data = {"monsters": m_list, "items": i_list}
 
-        # 3. [保底機制] 如果上面失敗，建立假怪物 (防止當機)
+            self.game_manager.bag = QuickBag(monster_list, item_list)
+            print("【系統】背包資料 (包含內部變數) 已手動注入")
+            # ====================================================
+
+        except Exception as e:
+            print(f"【嚴重錯誤】讀檔失敗: {e}")
+
+        # ----------------------------------------------------
+        # 保底機制
+        # ----------------------------------------------------
         if self.player_monster is None:
-            print("【系統】使用預設測試怪物 (Test Mode)")
             dummy_data = {
-                "name": "Player", "hp": 100, "max_hp": 100, "level": 1, 
-                "sprite_path": "menu_sprites/menusprite1.png", 
-                "element": "Water" # 這裡寫什麼不重要，下面會覆蓋
+                "name": "Backup", "hp": 100, "max_hp": 100, "level": 1, 
+                "sprite_path": "menu_sprites/menusprite1.png", "element": "Water"
             }
-            try:
-                self.player_monster = Monster(dummy_data)
-                
-                dummy_data["name"] = "Enemy"
-                self.enemy_monster = Monster(dummy_data)
-            except:
-                print("【嚴重錯誤】連預設圖片都讀不到")
+            self.player_monster = Monster(dummy_data)
+            dummy_data["name"] = "Enemy"
+            self.enemy_monster = Monster(dummy_data)
 
-        # ==========================================
-        # [關鍵修改] 無論如何，這裡強制隨機屬性
-        # ==========================================
+        # ----------------------------------------------------
+        # 屬性與狀態重置
+        # ----------------------------------------------------
         elements = ["Water", "Fire", "Grass"]
-        
-        if self.player_monster:
+        if not hasattr(self.player_monster, "element") or not self.player_monster.element:
             self.player_monster.element = random.choice(elements)
-        
-        if self.enemy_monster:
+        if not hasattr(self.enemy_monster, "element") or not self.enemy_monster.element:
             self.enemy_monster.element = random.choice(elements)
 
-        print(f"★ 戰鬥開始! 屬性重置: 玩家[{self.player_monster.element}] vs 敵人[{self.enemy_monster.element}]")
-        # ==========================================
+        # 初始化介面 (放在資料注入之後)
+        self.backpack_overlay = BackpackOverlay(self)
 
-        # 重置變數
         self.turn = "player"
         self.damage_texts = [] 
         for btn in self.buttons: btn.reset_press()
@@ -249,6 +265,8 @@ class BattleScene:
         self.battle_over = False
         self.overlay_type = None
 
+        print(f"★ 最終確認 -> P: {self.player_monster.hp}/{self.player_monster.max_hp}")
+        
     def exit(self):
         print("Exiting BattleScene")
 

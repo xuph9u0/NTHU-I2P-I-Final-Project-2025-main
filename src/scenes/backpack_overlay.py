@@ -1,6 +1,7 @@
 # src/scenes/backpack_overlay.py
 import os
 import pygame as pg
+import json
 from functools import partial  # 用於綁定按鈕點擊事件的參數
 
 from src.utils import Logger, GameSettings
@@ -107,7 +108,7 @@ class BackpackOverlay:
             self.game_scene.close_overlay()       # 關閉背包
             self.game_scene.turn = "enemy"        # 設定為敵人回合
             self.game_scene.handle_action("Fight") # 強制執行一次 Fight (觸發敵人攻擊)
-            
+
     def refresh_item_buttons(self):
         """[新增] 根據目前的 self.items 重新生成按鈕"""
         self.item_buttons = []

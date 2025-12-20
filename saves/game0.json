@@ -109,8 +109,8 @@
       },
       {
         "name": "Charizard",
-        "hp": 1500,
-        "max_hp": 2000,
+        "hp": 430,
+        "max_hp": 500,
         "level": 36,
         "sprite_path": "menu_sprites/menusprite2.png"
       },
@@ -130,8 +130,8 @@
       },
       {
         "name": "Gengar",
-        "hp": 1100,
-        "max_hp": 1400,
+        "hp": 490,
+        "max_hp": 550,
         "level": 28,
         "sprite_path": "menu_sprites/menusprite5.png"
       },
