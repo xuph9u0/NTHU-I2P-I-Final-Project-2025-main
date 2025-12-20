@@ -58,6 +58,11 @@ class Monster:
         self.hp = data["hp"]
         self.max_hp = data["max_hp"]
         self.level = data["level"]
+
+        # [新增] 戰鬥屬性加成 (預設為 1.0 倍)
+        self.atk_mult = 1.0 
+        self.def_mult = 1.0
+
         # [新增] 隨機屬性邏輯
         if "element" in data:
             self.element = data["element"]
@@ -208,35 +213,40 @@ class BattleScene:
     # 事件處理（玩家與敵人共用）
     # ----------------------------
     def handle_action(self, text):
-
         if text == "Fight":
             base_damage = 10  # 基礎傷害
 
             # --- 玩家攻擊敵人 ---
             if self.turn == "player":
-                # 計算倍率：玩家 vs 敵人
+                # 計算屬性倍率
                 multiplier = self.get_element_multiplier(self.player_monster.element, self.enemy_monster.element)
-                final_damage = int(base_damage * multiplier)
+                
+                # [修正] 傷害公式：(基礎 * 屬性倍率 * 玩家攻擊加成) / 敵人防禦加成
+                final_damage = int(base_damage * multiplier * self.player_monster.atk_mult / self.enemy_monster.def_mult)
+                
                 if final_damage < 1: final_damage = 1 # 至少 1 點傷害
 
                 self.enemy_monster.hp -= final_damage
                 
-                print(f"[玩家回合] {self.player_monster.element} -> {self.enemy_monster.element} (x{multiplier}) 傷害: {final_damage}")
+                print(f"[玩家回合] {self.player_monster.element} -> {self.enemy_monster.element} (x{multiplier}) 傷害: {final_damage} (Atk buff: {self.player_monster.atk_mult})")
 
             # --- 敵人攻擊玩家 ---
             else:
-                # 計算倍率：敵人 vs 玩家
+                # 計算屬性倍率
                 multiplier = self.get_element_multiplier(self.enemy_monster.element, self.player_monster.element)
-                final_damage = int(base_damage * multiplier)
+                
+                # [修正] 傷害公式：(基礎 * 屬性倍率 * 敵人攻擊加成) / 玩家防禦加成
+                final_damage = int(base_damage * multiplier * self.enemy_monster.atk_mult / self.player_monster.def_mult)
+                
                 if final_damage < 1: final_damage = 1
 
                 self.player_monster.hp -= final_damage
 
-                print(f"[敵人回合] {self.enemy_monster.element} -> {self.player_monster.element} (x{multiplier}) 傷害: {final_damage}")
-
+                print(f"[敵人回合] {self.enemy_monster.element} -> {self.player_monster.element} (x{multiplier}) 傷害: {final_damage} (Player Def buff: {self.player_monster.def_mult})")
 
         elif text == "Item":
-            # ... (保持原樣) ...
+            # 這裡只負責原本的簡單補血 (如果沒開背包時)
+            # 現在主要邏輯都在 BackpackOverlay 處理
             if self.turn == "player":
                 self.player_monster.hp = min(self.player_monster.hp + 10, self.player_monster.max_hp)
             else:

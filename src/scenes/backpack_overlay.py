@@ -61,10 +61,53 @@ class BackpackOverlay:
 
     def on_item_click(self, item_data):
         """[新增] 當道具按鈕被點擊時觸發"""
-        Logger.info(f"Item clicked: {item_data['name']}")
-        # 這裡可以加入使用道具的邏輯，例如：
-        # self.game_scene.game_manager.use_item(item_data)
+        # 1. 取得該道具在列表中的索引 (0:療癒, 1:力量, 2:防禦)
+        try:
+            item_index = self.items.index(item_data)
+        except ValueError:
+            return # 找不到道具就不處理
 
+        player = self.game_scene.player_monster
+        used = False # 標記是否成功使用
+
+        # 2. 根據順序觸發效果
+        if item_index == 0: 
+            # [療癒藥水] 恢復 50 HP (不超過上限)
+            if player.hp < player.max_hp:
+                player.hp = min(player.hp + 50, player.max_hp)
+                Logger.info("使用了療癒藥水！")
+                used = True
+            else:
+                Logger.info("HP 已經滿了，無法使用！")
+
+        elif item_index == 1:
+            # [力量藥水] 攻擊力提升 50% (變為 1.5 倍)
+            player.atk_mult += 0.5
+            Logger.info("使用了力量藥水！攻擊力提升！")
+            used = True
+
+        elif item_index == 2:
+            # [防禦藥水] 防禦力提升 50% (受到的傷害會減少)
+            player.def_mult += 0.5
+            Logger.info("使用了防禦藥水！防禦力提升！")
+            used = True
+
+        # 3. 如果成功使用，扣除數量並切換回合
+        if used:
+            item_data["count"] -= 1
+            
+            # 如果數量歸零，從列表中移除
+            if item_data["count"] <= 0:
+                self.items.remove(item_data)
+            
+            # 刷新按鈕顯示 (因為數量變了或道具沒了)
+            self.refresh_item_buttons()
+
+            # --- 觸發敵人回合 ---
+            self.game_scene.close_overlay()       # 關閉背包
+            self.game_scene.turn = "enemy"        # 設定為敵人回合
+            self.game_scene.handle_action("Fight") # 強制執行一次 Fight (觸發敵人攻擊)
+            
     def refresh_item_buttons(self):
         """[新增] 根據目前的 self.items 重新生成按鈕"""
         self.item_buttons = []
